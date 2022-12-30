@@ -1,11 +1,17 @@
 lockfileVersion: 5.4
 
 specifiers:
+  '@vuepress/bundler-vite': 2.0.0-beta.60
   '@vuepress/client': 2.0.0-beta.60
+  upath: ^2.0.1
   vue: ^3.2.45
   vuepress: 2.0.0-beta.60
 
+dependencies:
+  upath: 2.0.1
+
 devDependencies:
+  '@vuepress/bundler-vite': 2.0.0-beta.60
   '@vuepress/client': 2.0.0-beta.60
   vue: 3.2.45
   vuepress: 2.0.0-beta.60_dlgznq46b2nyvtu5wqobknojfm
@@ -1585,7 +1591,6 @@ packages:
   /upath/2.0.1:
     resolution: {integrity: sha512-1uEe95xksV1O0CYKXo8vQvN1JEbtJp7lb7C5U9HMsIp6IVwntkH/oNUzyVNQSd4S1sYk2FpSSW44FqMc8qee5w==}
     engines: {node: '>=4'}
-    dev: true
 
   /update-browserslist-db/1.0.10_browserslist@4.21.4:
     resolution: {integrity: sha512-OztqDenkfFkbSG+tRxBeAnCVPckDBcvibKd35yDONx6OU8N7sqgwc7rCbkJ/WcYtVRZ4ba68d6byhC21GFh7sQ==}
