@@ -1,1 +1,3 @@
-export * from './navbar';
+import theme from './themeConfig';
+
+export { theme };
