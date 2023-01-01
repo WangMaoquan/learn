@@ -6,7 +6,7 @@ const navbar: ThemeOptions['navbar'] = [
   },
   {
     text: '关于我',
-    link: '/about/README.md',
+    link: '/about/',
   },
 ];
 
