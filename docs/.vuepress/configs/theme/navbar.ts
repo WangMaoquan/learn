@@ -5,16 +5,16 @@ const navbar: ThemeOptions['navbar'] = [
     link: '/',
   },
   {
-    text: '关于我',
-    link: '/about/',
-  },
-  {
     text: 'vue',
-    link: '/learn-vue/',
+    link: '/learn-vue/1',
   },
   {
     text: 'snabbdom',
-    link: '/learn-snabbdom/',
+    link: '/learn-snabbdom/1',
+  },
+  {
+    text: '关于我',
+    link: '/about/',
   },
 ];
 
