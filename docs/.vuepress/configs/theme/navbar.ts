@@ -8,6 +8,10 @@ const navbar: ThemeOptions['navbar'] = [
     text: '关于我',
     link: '/about/',
   },
+  {
+    text: 'vue',
+    link: '/learn-vue/',
+  },
 ];
 
 export default navbar;
