@@ -12,6 +12,10 @@ const navbar: ThemeOptions['navbar'] = [
     text: 'vue',
     link: '/learn-vue/',
   },
+  {
+    text: 'snabbdom',
+    link: '/learn-snabbdom/',
+  },
 ];
 
 export default navbar;
