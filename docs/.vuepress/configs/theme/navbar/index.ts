@@ -6,11 +6,11 @@ const navbar: ThemeOptions['navbar'] = [
   },
   {
     text: 'vue',
-    link: '/learn-vue/1',
+    link: '/learn-vue/',
   },
   {
     text: 'snabbdom',
-    link: '/learn-snabbdom/1',
+    link: '/learn-snabbdom/',
   },
   {
     text: '关于我',

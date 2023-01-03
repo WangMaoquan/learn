@@ -19,7 +19,6 @@ const plugins: ThemeOptions['plugins'] = {
     include: true,
     mark: true,
     flowchart: true,
-    
   },
 };
 
