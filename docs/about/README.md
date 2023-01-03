@@ -6,6 +6,7 @@ sidebar: false
 
 ### 关于我
 
-- [ ] sidebar
-- [ ] header 跳转路径
-- [ ] 文章 next, prev
+- [x] sidebar
+- [x] header 跳转路径
+- [x] 文章 next, prev
+- [ ] 评论
