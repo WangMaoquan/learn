@@ -5,12 +5,17 @@ const navbar: ThemeOptions['navbar'] = [
     link: '/',
   },
   {
-    text: 'vue',
-    link: '/learn-vue/',
-  },
-  {
-    text: 'snabbdom',
-    link: '/learn-snabbdom/',
+    text: '学习',
+    children: [
+      {
+        text: 'vue',
+        link: '/learn-vue/',
+      },
+      {
+        text: 'snabbdom',
+        link: '/learn-snabbdom/',
+      },
+    ],
   },
   {
     text: '关于我',
