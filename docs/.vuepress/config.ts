@@ -3,7 +3,7 @@ import { viteBundler } from '@vuepress/bundler-vite';
 import { theme } from './configs';
 
 export default defineUserConfig({
-  base: '/', // 部署站点的基础路径
+  base: '/learn/', // 部署站点的基础路径
   lang: 'zh', // 站点的语言
   title: 'decade', // 站点title
   description: '王小明的vuepress', // 站点的描述
