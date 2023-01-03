@@ -1,5 +1,6 @@
 ---
 title: Vue.js
+article: false
 ---
 
 [Vue.js](https://cn.vuejs.org/) 是世界上主流的前端框架。

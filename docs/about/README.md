@@ -2,6 +2,7 @@
 title: About me
 footer: true
 sidebar: false
+article: false
 ---
 
 ### 关于我

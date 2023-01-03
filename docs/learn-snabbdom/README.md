@@ -1,5 +1,6 @@
 ---
 title: snabbdom
+article: false
 ---
 
 A virtual DOM library with focus on simplicity, modularity, powerful features and performance.
