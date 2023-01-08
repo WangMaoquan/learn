@@ -1,3 +1,3 @@
-import theme from './themeConfig';
+import theme from './themeConfig.js';
 
 export { theme };

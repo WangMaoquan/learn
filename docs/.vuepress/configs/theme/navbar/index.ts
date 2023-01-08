@@ -15,6 +15,10 @@ const navbar: ThemeOptions['navbar'] = [
         text: 'snabbdom',
         link: '/learn-snabbdom/',
       },
+      {
+        text: 'ts',
+        link: '/learn-typescript',
+      },
     ],
   },
   {

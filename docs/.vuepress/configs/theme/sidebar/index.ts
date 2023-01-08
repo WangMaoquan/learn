@@ -1,5 +1,5 @@
-import { snabbdomSideBar } from './snabbdom';
-import { vueSideBar } from './vue';
+import { snabbdomSideBar } from './snabbdom.js';
+import { vueSideBar } from './vue.js';
 import { sidebar } from 'vuepress-theme-hope';
 
 export const customSideBar = sidebar({
