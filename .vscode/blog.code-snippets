@@ -1,0 +1,15 @@
+{
+	"playground": {
+		"prefix": "bpts",
+		"scope": "markdown",
+		"body": [
+			":::playground#ts",
+			"@file index.ts",
+			"```ts",
+			"",
+			"```",
+			":::"
+		],
+		"description": "blog-playground-ts"
+	}
+}
