@@ -19,6 +19,9 @@ const plugins: ThemeOptions['plugins'] = {
     include: true,
     mark: true,
     flowchart: true,
+    playground: {
+      presets: ['ts', 'vue'],
+    },
   },
 };
 
