@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "moduleResolution": "NodeNext",
+    "target": "ES2020"
+  },
+  "include": [
+    "./docs/.vuepress/**/*.ts",
+    "./docs/**/*.ts"
+  ]
+}
