@@ -87,6 +87,33 @@
 			":::"
 		],
 		"description": "blog-container"
+	},
+	"blog-page": {
+		"prefix": "blog-page",
+		"scope": "markdown",
+		"body": [
+			"---",
+			"title: ${1:文章title}",
+			"date: ${2:写作时间}",
+			"tag:",
+			"  - ${3:文章标签}",
+			"category:",
+			"  - ${4:文章归属}",
+			"description: ${5:文章介绍}",
+			"footer: true",
+			"---"
+		],
+		"description": "生成一般 *.md 的formatter"
+	},
+	"blog-readme": {
+		"prefix": "blog-readme",
+		"body": [
+			"---",
+			"title: ${1:文章title}",
+			"article: false",
+			"---"
+		],
+		"description": "生成readme.md formatter"
 	}
 }
 /**
