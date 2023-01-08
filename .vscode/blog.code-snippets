@@ -53,12 +53,20 @@
 		"description": "blog-tasklist"
 	},
 	"blog-pic": {
-		"prefix": "blog-",
+		"prefix": "blog-pic",
 		"scope": "markdown",
 		"body": [
-			"[${1:测试图片名](${2:测试图片地址})"
+			"![${1:测试图片名](${2:测试图片地址})"
 		],
 		"description": "blog-pic"
+	},
+	"blog-link": {
+		"prefix": "blog-link",
+		"scope": "markdown",
+		"body": [
+			"[${1:测试链接名](${2:测试链接地址})"
+		],
+		"description": "blog-link"
 	},
 	"blog-mark": {
 		"prefix": "blog-mark",
@@ -68,6 +76,18 @@
 		],
 		"description": "blog-mark"
 	},
+	"blog-container": {
+		"prefix": "blog-container",
+		"scope": "markdown",
+		"body": [
+			"::: ${1|info,note,tip,warning,danger,details|} ${2: 默认标题}",
+			"",
+			"${3:默认内容}",
+			"",
+			":::"
+		],
+		"description": "blog-container"
+	}
 }
 /**
   快速生成 snippets 网站
