@@ -15,5 +15,5 @@ article: false
 - [ ] vite
 - [ ] vue
 - [ ] react
-- [ ] 快速新建 blog-page
+- [ ] 终端快速新建 blog-page
 - [ ] babel
