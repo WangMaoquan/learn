@@ -11,4 +11,5 @@ export const typescriptSideBar = arraySidebar([
   '7',
   '8',
   '9',
+  '10',
 ]);
