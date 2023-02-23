@@ -64,7 +64,7 @@
 		"prefix": "blog-link",
 		"scope": "markdown",
 		"body": [
-			"[${1:测试链接名](${2:测试链接地址})"
+			"[${1:测试链接名}](${2:测试链接地址})"
 		],
 		"description": "blog-link"
 	},
