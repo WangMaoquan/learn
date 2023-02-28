@@ -10,4 +10,4 @@ article: false
 
 本章内容, 我主要分析 `reactivity` 这个包
 
-- [响应式的基础 Proxy](/docs/learn-vue/reactivity/proxy.md)
+- [响应式的基础 Proxy](/learn-vue/reactivity/proxy.md)
