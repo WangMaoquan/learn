@@ -199,7 +199,9 @@ proxy.age;
 
 上面的四个方法都是对对象的代理, 但是用处却不相同, 本质都是一个 `Proxy` 我们很容易想到的是就是 实现的拦截不同
 
-> 下面实现的都是简易版本, 没有处理很多边界 case
+> track(target: object, type: 'GET' | 'HAS' | 'ITERATE', key: string | symbol) // 收集依赖
+>
+> trigger(target: object, type: 'ADD' | 'SET' | 'DELETE' | 'CLEAR', key: string | symbol) // 派发更新
 
 #### get
 
@@ -212,7 +214,7 @@ proxy.age;
      receiver: object,
    ) {
      const res = Reflect.get(target, key, receiver);
-
+     track(target, 'GET', key);
      if (isObject(res)) {
        // 这里处理的就是 如果res还是对象的话 就再调用一次reactive, 不用像2.x, 对象层级很深的时候还需要递归遍历
        return reactive(res);
@@ -230,8 +232,8 @@ proxy.age;
      key: string | symbol,
      receiver: object,
    ) {
+     track(target, 'GET', key);
      const res = Reflect.get(target, key, receiver);
-
      // shallow 的话 是不需要再去判断的 直接返回就是
      return res;
    }
@@ -281,6 +283,10 @@ const createGetter = (
   return function (target: object, key: string | symbol, receiver: object) {
     const res = Reflect.get(target, key, receiver);
 
+    if (!isReadonly) {
+      track(target, 'GET', key);
+    }
+
     if (shallow) {
       return res;
     }
@@ -306,25 +312,32 @@ const createSetter = (shallow: boolean = false) => {
     newVal: unknow,
     receiver: object,
   ): boolean {
+    let oldValue = (target as any)[key];
     if (isReadonly(target)) {
       // 如果是 readonly 不允许修改
       return false;
     }
-
+    const hadKey = hasOwn(target, key);
     const result = Reflect.set(target, key, value, receiver);
-
+    if (!hadKey) {
+      trigger(target, 'ADD', key, value);
+    } else if (hasChanged(value, oldValue)) {
+      trigger(target, 'SET', key, value, oldValue);
+    }
     return result;
   };
 };
 ```
 
-### deleteProperty
+#### deleteProperty
 
 我们只需要注意 `readonly` 是不允许 `删除` 字段的, 所以 对于 readonly 的 `deleteProperty` 我们打印一个警告, 返回 false
 
 ```typescript
 function deleteProperty(target: object, key: string | symbol): boolean {
+  const oldValue = (target as any)[key];
   const result = Reflect.deleteProperty(target, key);
+  trigger(target, 'DELETE', key, undefined, oldValue);
   return result;
 }
 ```
@@ -335,6 +348,7 @@ function deleteProperty(target: object, key: string | symbol): boolean {
 
 ```typescript
 function ownKeys(target: object): (string | symbol)[] {
+  track(target, 'ITERATE', 'ITERATE_KEY'); // ownKeys 我们只能拿到对象, 所以自定义一个key
   return Reflect.ownKeys(target);
 }
 ```
@@ -346,6 +360,7 @@ function ownKeys(target: object): (string | symbol)[] {
 ```typescript
 function has(target: object, key: string | symbol): boolean {
   const result = Reflect.has(target, key);
+  track(target, 'HAS', key);
   return result;
 }
 ```
@@ -399,4 +414,102 @@ const shallowReactiveHandlers = extend({}, mutableHandlers, {
 const shallowReadonlyHandlers = extend({}, readonlyHandlers, {
   get: shallowReadonlyGet,
 });
+```
+
+#### 处理数组
+
+首先是对数组的`读取`操作
+
+- 通过索引访问数组元素
+- 访问数组长度
+- 把数组当做对象, 使用 for ... in
+- 使用 for ... of 遍历
+- 使用数组原型的方法: concat/join/every/some/find/findIndex/includes 等不改变数组长度的方法
+
+其次是对数组的`赋值`操作
+
+- 通过索引设置数组元素
+- 直接修改数组长度
+- 修改数组的方法: pop/push/shift/unshift/splice/fill/sort
+
+##### 数组的索引与 length
+
+```typescript
+const createSetter = (shallow: boolean = false) => {
+  return function set(
+    target: object,
+    key: string | symbol,
+    newVal: unknow,
+    receiver: object,
+  ): boolean {
+    /**省略代码 */
+
+    // 只要增加逻辑对 hadKey
+    const hadKey =
+      isArray(target) && isIntegerKey(key)
+        ? Number(key) < target.length
+        : hasOwn(target, key);
+
+    /**省略代码 */
+  };
+};
+```
+
+##### for...in 遍历数组
+
+和对象类似, 也可以通过 `ownKeys` 拦截, 但是不一样的时候, 我需要区分是数组还是对象
+
+```typescript
+function ownKeys(target: object): (string | symbol)[] {
+  track(target, 'ITERATE', isArray(target) ? 'length' : 'TERATE_KEY');
+  return Reflect.ownKeys(target);
+}
+```
+
+##### for...of 遍历数组
+
+`for ... of` 是用来遍历遍历`可迭代对象`的, 通俗一点就是看 是否实现了 `[Symbol.iterator]`, 数组的 迭代器 是会读取数组的 `length`, 数组的 `length` 我们已经收集过了依赖, 所以我们不需要去单独实现 针对 `for...of` 的
+
+下面我们来实现一个迭代器
+
+```typescript
+const arr =  [1, 2, 3, 4];
+
+arr[Symbol.iterator] = function () {
+  const target = this;
+  const len = target.length;
+  let index = 0;
+  return {
+    next() {
+      return {
+        value: index < len ? target[index] ? undefined,
+        done: index++ >= len
+      }
+    }
+  }
+}
+
+// 提一嘴 数组的Array.values 就是 数组的 [Symbol.iterator]
+
+Array.prototype.values === Array.prototype[Symbol.iterator] // true
+```
+
+最后就是 对于这种访问 `symbol.xxxx` 我们是不需要去拦截的, 因为一旦有啥问题不好排查, 还有万一导致性能问题, 也是个大麻烦
+
+```typescript
+const createGetter = (
+  shallow: boolean = false,
+  isReadonly: boolean = false,
+) => {
+  return function (target: object, key: string | symbol, receiver: object) {
+    const res = Reflect.get(target, key, receiver);
+
+    // 增加一个判断 symbal的 builtInSymbols 就是内置的symbol
+    if (builtInSymbols.has(key)) {
+      return res;
+    }
+
+    // 省略代码
+  };
+};
 ```
