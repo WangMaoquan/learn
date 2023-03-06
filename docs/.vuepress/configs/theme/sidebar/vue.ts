@@ -15,4 +15,8 @@ export const vueSideBar = arraySidebar([
       },
     ],
   },
+  {
+    text: '调试源码',
+    link: 'debugger-source-code',
+  },
 ]);
