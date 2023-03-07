@@ -19,4 +19,8 @@ export const vueSideBar = arraySidebar([
     text: '调试源码',
     link: 'debugger-source-code',
   },
+  {
+    text: '挂载与渲染',
+    link: 'render-flow',
+  },
 ]);
