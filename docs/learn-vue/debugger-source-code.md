@@ -10,7 +10,7 @@ description: 怎么调试源码
 footer: true
 ---
 
-### 引入
+## 引入
 
 `vue3.x` 和 `vue2.7.x` 都是使用的 `rollup` 打包的, 所以很多配置建议自己去看 [rollup 官网](https://rollupjs.org/configuration-options/)
 
@@ -18,9 +18,9 @@ footer: true
 
 总所周知, 发布的包是不会把对应的 `xxx.js.map` 生成一起发布的, 所以我们自己拉项目的话 只要生成对应的 `xxx.js.map` 文件就好了
 
-### vue3.x
+## vue3.x
 
-#### 下载
+### 下载
 
 [仓库地址](https://github.com/vuejs/core)
 
@@ -32,7 +32,7 @@ cd core
 pnpm i
 ```
 
-#### package.json
+### package.json
 
 首先我们需要寻找到项目对应的`打包命令`, 说到命令 我们当然得去 `package.json`的 `scripts` 内寻找
 
@@ -101,7 +101,7 @@ pnpm run build -w -s
 
 就此 `vue3.x` 的源码调试准备工作就完成了
 
-#### packages/vue
+### packages/vue
 
 在 `packages/vue/examples` 包里面新建一个 `test` 文件夹, 并创建一个 `xxxx.html`
 
@@ -109,7 +109,7 @@ pnpm run build -w -s
 <div id="app"></div>
 <script src="../../dist/vue.global.js"></script>
 <script>
-  const { defineComponent, createApp, h } = Vue;
+  const { defineComponent, createApp } = Vue;
   const App = defineComponent({
     name: 'app',
     template: `<div>你好</div>`,
@@ -120,7 +120,7 @@ pnpm run build -w -s
 
 然后就是调试, 你可以在上面的代码里面 加上`debugger` 或者去谷歌浏览器控制台, 打上`断点调试`
 
-### vue2.x
+## vue2.x
 
 `2.7.x`开始 已经从 `flow` 变成 `typescript`
 
@@ -134,7 +134,7 @@ cd vue
 pnpm i
 ```
 
-#### package.json
+### package.json
 
 ```json
 {
@@ -428,7 +428,7 @@ return rollup
 
 :::
 
-### 最后
+## 最后
 
 `vue2.x`, `vue3.x` 怎么打包出来 `xxx.js.map` 文件 就已经完成了
 
