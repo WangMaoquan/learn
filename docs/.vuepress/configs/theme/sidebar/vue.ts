@@ -20,7 +20,11 @@ export const vueSideBar = arraySidebar([
     link: 'debugger-source-code',
   },
   {
-    text: '挂载与渲染',
+    text: '组件的挂载与渲染',
     link: 'render-flow',
+  },
+  {
+    text: 'props的初始化',
+    link: 'init-props',
   },
 ]);
