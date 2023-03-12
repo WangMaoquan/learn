@@ -11,7 +11,12 @@ export const vueSideBar = arraySidebar([
       {
         prefix: 'reactivity',
         link: 'reactivity/proxy',
-        text: 'proxy',
+        text: 'Proxy',
+      },
+      {
+        prefix: 'reactivity',
+        text: 'ReactiveEffect',
+        link: 'reactivity/reactiveEffect',
       },
     ],
   },
