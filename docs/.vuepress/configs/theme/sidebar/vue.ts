@@ -32,4 +32,8 @@ export const vueSideBar = arraySidebar([
     text: 'props的初始化',
     link: 'init-props',
   },
+  {
+    text: 'scheduler调度器',
+    link: 'scheduler',
+  },
 ]);
