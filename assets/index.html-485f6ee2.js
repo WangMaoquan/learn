@@ -1,0 +1,1 @@
+const e=JSON.parse('{"key":"v-78f9e98a","path":"/category/snabbdom/","title":"snabbdom 分类","lang":"zh-CN","frontmatter":{"title":"snabbdom 分类","blog":{"type":"category","name":"snabbdom","key":"category"},"layout":"BlogCategory"},"headers":[],"git":{},"readingTime":{"minutes":0,"words":0},"filePathRelative":null,"excerpt":""}');export{e as data};
