@@ -36,4 +36,8 @@ export const vueSideBar = arraySidebar([
     text: 'scheduler调度器',
     link: 'scheduler',
   },
+  {
+    text: 'directive',
+    link: 'directive',
+  },
 ]);
