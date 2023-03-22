@@ -22,6 +22,10 @@ const navbar: ThemeOptions['navbar'] = [
     ],
   },
   {
+    text: '面试',
+    link: '/interview',
+  },
+  {
     text: '关于我',
     link: '/about/',
   },
