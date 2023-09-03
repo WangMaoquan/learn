@@ -356,3 +356,176 @@ hook.callAsync('decade', (error, result) => {
 ```
 
 :::
+
+#### interceptor
+
+我们可以先看 类型
+
+```ts
+interface HookInterceptor<T, R, AdditionalOptions = UnsetAdditionalOptions> {
+  name?: string;
+  tap?: (tap: FullTap & IfSet<AdditionalOptions>) => void;
+  call?: (...args: any[]) => void;
+  loop?: (...args: any[]) => void;
+  error?: (err: Error) => void;
+  result?: (result: R) => void;
+  done?: () => void;
+  register?: (
+    tap: FullTap & IfSet<AdditionalOptions>,
+  ) => FullTap & IfSet<AdditionalOptions>;
+}
+```
+
+通过上面的类型, 我们可以 看出 其中的 `7个key` 是去触发拦截, 分别是 `tap, call, loop, error, result, done, register`, 下面我们来举例
+
+::: code-tabs
+
+@tab base
+
+```ts
+const hook = new SyncHook(['name']);
+
+const tap1 = (name) => {
+  console.log(name, 'name');
+};
+
+hook.intercept({
+  tap(tap) {
+    // 在 tap 这个 拦截器钩子 可以在里面访问到 tap 对象 也就是 保存在 taps 中的那个数据结构, 切记不要改变 对象
+    console.log(tap, 'tap-tap');
+  },
+  call(...args) {
+    // call 拦截器钩子 可以访问到 传入的参数
+    console.log(args, 'call-args');
+  },
+  loop(...args) {
+    // 不是 loop 的不会触发
+    console.log(args, 'loop-args');
+  },
+  register(tap) {
+    // 这个钩子是可以修改 tap 的信息的, 根据打印我们可以看出最先执行
+    console.log(tap, 'tap-register');
+    return tap;
+  },
+  error(err) {
+    // 猜测是 异步的 error
+    console.log(err, 'err');
+  },
+  done() {
+    // 会在 tap 调用 完成之后执行
+    console.log('done');
+  },
+  result(result) {
+    // 可能是有返回值的
+    console.log(result, 'result');
+  },
+});
+
+hook.tap('tap1', tap1);
+
+hook.call('decade');
+```
+
+@tab loop
+
+```ts
+const hook = new SyncLoopHook(['name']);
+const result: string[] = [];
+let count = 5;
+const tap1 = () => {
+  result.push(`tap1: ${count}`);
+  if ([1, 2, 3].includes(count)) {
+    return undefined;
+  } else {
+    count--;
+    return 'tap1';
+  }
+};
+const tap2 = () => {
+  result.push(`tap2: ${count}`);
+  if ([1, 2].includes(count)) {
+    return undefined;
+  } else {
+    count--;
+    return 'tap2';
+  }
+};
+const tap3 = () => {
+  result.push(`tap3: ${count}`);
+  if (count === 1) {
+    return undefined;
+  } else {
+    count--;
+    return 'tap3';
+  }
+};
+
+hook.tap('tap1', tap1);
+hook.tap('tap2', tap2);
+hook.tap('tap3', tap3);
+
+hook.intercept({
+  loop(...args) {
+    console.log(args, 'loop-args');
+  },
+  tap(tap) {
+    console.log('loop-tap', tap);
+  },
+});
+
+hook.call('decade');
+```
+
+@tab result
+
+```ts
+const hook = new AsyncSeriesBailHook(['name']);
+
+hook.tapAsync('tap1', (name, cb) => {
+  setTimeout(() => {
+    cb(null, 'tap1');
+  }, 2000);
+});
+
+hook.tapAsync('tap2', (name, cb) => {
+  setTimeout(() => {
+    cb(null, 'tap2');
+  }, 1000);
+});
+
+hook.intercept({
+  result(result) {
+    // 这里获取到的就是 callAsync 回调的 result
+    console.log('result', result);
+  },
+});
+
+hook.callAsync('decade', (error, result) => {
+  console.log(result);
+});
+```
+
+@tab error
+
+```ts
+const hook = new AsyncSeriesBailHook(['name']);
+
+hook.tapAsync('tap1', (name, cb) => {
+  setTimeout(() => {
+    cb(Error('1'));
+  }, 2000);
+});
+
+hook.intercept({
+  error(err) {
+    // 这里获取到到就是 cb 的 error
+    console.log(err, 'err');
+  },
+});
+
+hook.callAsync('decade', (error, result) => {
+  console.log(error);
+});
+```
+
+:::
