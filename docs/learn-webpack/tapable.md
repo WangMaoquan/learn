@@ -10,7 +10,7 @@ description: tapable 从0到1
 footer: true
 ---
 
-### tapable 是什么?
+# tapable 是什么?
 
 当我们自己写 webpack 插件的时候, 都会使用到 `complier.hook.eventType.tap()` 这样的代码去注册事件, 比如[官方给的例子](https://webpack.docschina.org/contribute/writing-a-plugin/#creating-a-plugin), 下面我自己举的例子
 
@@ -26,7 +26,7 @@ class Myplugin {
 其实这就是 `tapable` 的应用, 你也可以理解为 是一个类似于 `Node.js` 中的 `EventEmitter` 的库
 我们主要是 通过 `tapable` 我们可以注册自定义事件，然后在适当的时机去执行自定义事件
 
-#### tapable 钩子分类
+# tapable 钩子分类
 
 下面是[官方文档](https://github.com/webpack/tapable)给的代码
 
@@ -59,7 +59,7 @@ const {
    - AsyncSeriesWaterfallHook 异步串联瀑布钩子
    - AsyncSeriesLoopHook 异步循环钩子
 
-#### 方法使用
+## 方法使用
 
 tapable 所有的 xxxHook 都基于 `Hook` 这个类去扩展, 比如 `SyncXXXHook` 实现了 `tap` 与 `call`, 而 `AsyncXXXHook` 实现了 `tapAsync/tapPromise` 与 `callAsync/promise`
 
@@ -83,6 +83,8 @@ declare class Hook<T, R, AdditionalOptions = UnsetAdditionalOptions> {
   ): Omit<this, 'call' | 'callAsync' | 'promise'>; // 传入 options 整合 FullTap
 }
 ```
+
+### SyncXXX
 
 ::: code-tabs
 
@@ -196,9 +198,17 @@ hook.tap('tap3', tap3);
 hook.call(undefined);
 ```
 
+:::
+
+### AsyncXXXX
+
+::: code-tabs
+
 @tab AsyncParallelHook
 
 ```ts
+import { AsyncParallelHook } from 'tapable';
+
 const hook = new AsyncParallelHook(['name']);
 const tap1 = (name, cb) => {
   // 执行 cb 就代表这个 异步 完成
@@ -216,7 +226,7 @@ hook.callAsync('decade', (error, result) => {
 @tab AsyncParallelBailHook
 
 ```ts
-import { SyncHook } from 'tapable';
+import { AsyncParallelBailHook } from 'tapable';
 
 const hook = new AsyncParallelBailHook(['name']);
 const result: string[] = [];
@@ -357,7 +367,7 @@ hook.callAsync('decade', (error, result) => {
 
 :::
 
-#### interceptor
+## interceptor
 
 我们可以先看 类型
 
@@ -530,7 +540,7 @@ hook.callAsync('decade', (error, result) => {
 
 :::
 
-#### HookMap
+## HookMap
 
 `hookMap` 用于统一管理 一类 hook
 
@@ -556,7 +566,7 @@ spys.forEach((spy, i) => {
 });
 ```
 
-#### MultiHook
+## MultiHook
 
 统一管理 初始化注册的 hook
 
@@ -584,3 +594,69 @@ expect(syncBailHook.taps[0].fn).toEqual(tap);
 expect(syncWaterFallHook.taps[0].fn).toEqual(tap);
 expect(syncLoopHook.taps[0].fn).toEqual(tap);
 ```
+
+## 总结
+
+### Sync
+
+通过 `new SyncXxx()` 来返回一个对象, 第一个参数保存在对象的 `_args` 上, 第二个参数定义对象的 `name` 属性, 通过 `tap` 来注册钩子, 注册的钩子 存放在 `taps` 属性, 通过 `call` 来触发注册的钩子
+
+tap 的 第一个参数是 `字符串` 时, 会默认作为 钩子的 `name` 属性, 包装成这样的一个对象 `{ name, type, fn }`
+tap 的 第一个参数是 `对象` 时, 我们需要可以传入 `{name, before, stage}` 这样的, 其中 `before` 是用来 决定插入的位置的, `stage` 是用来执行顺序, 数字越大越靠后, `before` 的优先级高
+
+#### SyncHook
+
+最基本的 同步 Hook
+
+#### SyncBailHook
+
+注册的钩子只要返回值 `不为undefined`, 就不会执行后面的钩子了
+
+#### SyncWaterfallHook
+
+注册的钩子的返回值 不是 `undefined` 就会作为 下一个钩子执行的第一个参数
+
+#### SyncLoopHook
+
+注册的钩子 只要不是 undefined 就会`从头开始` 重新执行, 直到所有的 钩子返回值都是 undefined
+
+### Async
+
+通过 `new AsyncSeriesXxx() / new AsyncParallelXxx()` 来返回一个对象, 第一个参数保存在对象的 `_args` 上, 第二个参数定义对象的 `name` 属性, 通过 `tapAsync/promiseAsync` 来注册钩子, 注册的钩子 存放在 `taps` 属性, 通过 `callAsync/promise` 来触发注册的钩子
+
+tap 的 第一个参数是 `字符串` 时, 会默认作为 钩子的 `name` 属性, 包装成这样的一个对象 `{ name, type, fn }`
+tap 的 第一个参数是 `对象` 时, 我们需要可以传入 `{name, before, stage}` 这样的, 其中 `before` 是用来 决定插入的位置的, `stage` 是用来执行顺序, 数字越大越靠后, `before` 的优先级高
+
+#### AsyncParallelHook
+
+异步并行钩子
+
+#### AsyncParallelBailHook
+
+异步并行保险钩子, 有返回值就会触发 `tapAsync` 的回调
+
+#### 为啥没有 AsyncParallelWaterfallHook 与 AsyncParallelWaterLoopHook
+
+个人理解哈, `waterfall` 和 `loop` 更强调 链式执行, `waterfall` 需要上一个有返回值作为下一个的参数, `loop` 一旦当前返回值不是 `undefined` 就会重头执行 直到 `undefined` 位置
+
+#### AsyncSeriesHook
+
+异步串行钩子
+
+#### AsyncSeriesBailHook
+
+异步串行保险钩子 返回 `undefined` 不会触发, `null` 会
+
+#### AsyncSeriesWaterfallHook
+
+异步串行瀑布钩子, 当前 钩子 返回值不是 `undefined / null` 就会作为下一个 钩子的参数
+
+#### AsyncSeriesLoopHook
+
+异步串行循环钩子, 当前 钩子 返回值不是 `undefined` 就会 从头执行
+
+### HookMap 与 MultiHook
+
+都可以统一 `hook`, `MultiHook` 管理的数量我们创建的时候就已经有限了, 而 `HookMap` 只要 `key` 不重复 就可以无限添加,
+
+`MultiHook` 所以有统一触发的 方法, 而 `HookMap` 只能 循环
