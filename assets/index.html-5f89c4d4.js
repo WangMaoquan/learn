@@ -1,0 +1,1 @@
+const e=JSON.parse('{"key":"v-6eed78a0","path":"/tag/tapable/","title":"tapable 标签","lang":"zh-CN","frontmatter":{"title":"tapable 标签","blog":{"type":"category","name":"tapable","key":"tag"},"layout":"BlogCategory"},"headers":[],"git":{},"readingTime":{"minutes":0,"words":0},"filePathRelative":null,"excerpt":""}');export{e as data};
