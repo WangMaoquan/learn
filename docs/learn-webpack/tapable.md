@@ -529,3 +529,58 @@ hook.callAsync('decade', (error, result) => {
 ```
 
 :::
+
+#### HookMap
+
+`hookMap` 用于统一管理 一类 hook
+
+```ts
+const hookMap = new HookMap(() => new SyncHook(['name']));
+
+const spys: SpyInstance<[any], void>[] = [];
+
+const keys = ['sync1', 'sync2'];
+keys.forEach((key) => {
+  hookMap.for(key).tap('tap', (name) => {
+    console.log(`${key}: ${name}`);
+  });
+  spys.push(vi.spyOn(hookMap.for(key), 'call'));
+});
+keys.forEach((key) => {
+  hookMap.get(key)?.call('decade');
+});
+
+spys.forEach((spy, i) => {
+  // 参数
+  expect(spy).toBeCalledWith('decade');
+});
+```
+
+#### MultiHook
+
+统一管理 初始化注册的 hook
+
+```ts
+const syncHook = new SyncHook(['name']);
+const syncBailHook = new SyncBailHook(['name']);
+const syncWaterFallHook = new SyncWaterfallHook(['name']);
+const syncLoopHook = new SyncLoopHook(['name']);
+
+const multiHook = new MultiHook(
+  [syncHook, syncBailHook, syncLoopHook, syncWaterFallHook],
+  'multiHook',
+);
+
+const tap = (name) => {
+  return name;
+};
+
+multiHook.tap('tap1', tap);
+
+// 统一注册
+expect(syncHook.taps[0].fn).toEqual(tap);
+expect(syncHook.taps[0].name).toBe('tap1');
+expect(syncBailHook.taps[0].fn).toEqual(tap);
+expect(syncWaterFallHook.taps[0].fn).toEqual(tap);
+expect(syncLoopHook.taps[0].fn).toEqual(tap);
+```
