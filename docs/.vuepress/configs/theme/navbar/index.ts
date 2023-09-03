@@ -19,6 +19,10 @@ const navbar: ThemeOptions['navbar'] = [
         text: 'ts',
         link: '/learn-typescript',
       },
+      {
+        text: 'webpack',
+        link: '/learn-webpack',
+      },
     ],
   },
   {
