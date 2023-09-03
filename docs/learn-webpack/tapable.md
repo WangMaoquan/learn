@@ -57,3 +57,302 @@ const {
    - AsyncSeriesHook 异步串联普通钩子
    - AsyncSeriesBailHook 异步串联中断钩子
    - AsyncSeriesWaterfallHook 异步串联瀑布钩子
+   - AsyncSeriesLoopHook 异步循环钩子
+
+#### 方法使用
+
+tapable 所有的 xxxHook 都基于 `Hook` 这个类去扩展, 比如 `SyncXXXHook` 实现了 `tap` 与 `call`, 而 `AsyncXXXHook` 实现了 `tapAsync/tapPromise` 与 `callAsync/promise`
+
+所以简单说些 `Hook` 类上的 几个属性
+
+```typescript
+declare class Hook<T, R, AdditionalOptions = UnsetAdditionalOptions> {
+  constructor(args?: ArgumentNames<AsArray<T>>, name?: string); // 第一个参数接收一个数组, 第二个参数接收一个字符串
+  name: string | undefined; // 第二个参数保存的 name
+  taps: FullTap[]; // 通过 tap/tapAsync/tapPromise 注册的钩子 统一处理后存放的位置
+  intercept(interceptor: HookInterceptor<T, R, AdditionalOptions>): void; // 拦截器, 可以类比下 axios 的 拦截器
+  isUsed(): boolean; // 是否使用
+  callAsync(...args: Append<AsArray<T>, Callback<Error, R>>): void; // 触发异步钩子
+  promise(...args: AsArray<T>): Promise<R>; // 触发异步钩子
+  tap(
+    options: string | (Tap & IfSet<AdditionalOptions>),
+    fn: (...args: AsArray<T>) => R,
+  ): void; // 收集同步钩子
+  withOptions(
+    options: TapOptions & IfSet<AdditionalOptions>,
+  ): Omit<this, 'call' | 'callAsync' | 'promise'>; // 传入 options 整合 FullTap
+}
+```
+
+::: code-tabs
+
+@tab SyncHook
+
+```ts
+import { SyncHook } from 'tapable';
+
+const hook = new SyncHook(['name']);
+
+hook.tap('tap', (name) => {
+  console.log('name', name);
+});
+
+hook.tap('tap1', (name) => {
+  console.log('name1', name);
+});
+
+hook.call('decade');
+```
+
+@tab SyncBailHook
+
+```ts
+import { SyncBailHook } from 'tapable';
+
+const hook = new SyncBailHook(['name']);
+
+hook.tap('tap', (name) => {
+  console.log('name', name);
+  return 'tap'; // 这个返回值不是 undefined 所以不会触发 tap1
+});
+
+hook.tap('tap1', (name) => {
+  console.log('name1', name); // 这个不会打印
+});
+
+hook.call('decade');
+```
+
+@tab SyncWaterfallHook
+
+```ts
+import { SyncWaterfallHook } from 'tapable';
+
+// 需要注意的 SyncWaterfallHook 的第一个参数是必须得
+const hook = new SyncWaterfallHook(['name']);
+const result: string[] = [];
+const tap1 = (name: string) => {
+  result.push(name); // decade
+  return 'zio';
+};
+
+// 没有返回值
+const tap2 = (name: string) => {
+  result.push(name); // zio
+};
+
+//
+const tap3 = (name: string) => {
+  result.push(name); // zio
+};
+
+hook.tap('tap1', tap1);
+hook.tap('tap2', tap2);
+hook.tap('tap3', tap3);
+
+hook.call('decade');
+
+// result ["decade", "zio", "zio"]
+```
+
+@tab SyncLoopHook
+
+```ts
+const hook = new SyncLoopHook();
+const result: string[] = []; // tap1 5, tap1 4, tap1 3, tap2 3, tap1 2, tap2 tap3 2 tap1 1 tap 2 1 tap3 1
+let count = 5;
+const tap1 = () => {
+  result.push(`tap1: ${count}`);
+  if ([1, 2, 3].includes(count)) {
+    return undefined;
+  } else {
+    count--;
+    return 'tap1';
+  }
+};
+const tap2 = () => {
+  result.push(`tap2: ${count}`);
+  if ([1, 2].includes(count)) {
+    return undefined;
+  } else {
+    count--;
+    return 'tap2';
+  }
+};
+const tap3 = () => {
+  result.push(`tap3: ${count}`);
+  if (count === 1) {
+    return undefined;
+  } else {
+    count--;
+    return 'tap3';
+  }
+};
+
+hook.tap('tap1', tap1);
+hook.tap('tap2', tap2);
+hook.tap('tap3', tap3);
+
+hook.call(undefined);
+```
+
+@tab AsyncParallelHook
+
+```ts
+const hook = new AsyncParallelHook(['name']);
+const tap1 = (name, cb) => {
+  // 执行 cb 就代表这个 异步 完成
+  setTimeout(() => {
+    cb();
+  }, 1000);
+};
+hook.tapAsync('tap1', tap1);
+hook.callAsync('decade', (error, result) => {
+  console.log('error', error);
+  console.log('result', result);
+});
+```
+
+@tab AsyncParallelBailHook
+
+```ts
+import { SyncHook } from 'tapable';
+
+const hook = new AsyncParallelBailHook(['name']);
+const result: string[] = [];
+
+// tap1 没有返回值
+hook.tapAsync('tap1', (name, cb) => {
+  setTimeout(() => {
+    cb();
+  }, 1000);
+});
+
+// 就算 tap3 比 tap2 快 也是返回 tap3
+hook.tapAsync('tap3', (name, cb) => {
+  setTimeout(() => {
+    cb(null, 'tap3 返回值');
+  }, 2000);
+});
+
+hook.tapAsync('tap2', (name, cb) => {
+  setTimeout(() => {
+    cb(null, 'tap2 返回值');
+  }, 1500);
+});
+
+hook.callAsync('decade', (e, r) => {
+  console.log(r, 'r');
+  result.push(r); // tap3 返回值
+});
+```
+
+@tab AsyncSeriesHook
+
+```ts
+import { AsyncSeriesHook } from 'tapable';
+
+const hook = new AsyncSeriesHook(['name']);
+
+hook.tapAsync('tap1', (name, cb) => {
+  console.log('tap1');
+  setTimeout(() => {
+    console.log('tap1 ex');
+    cb();
+  }, 1000);
+});
+
+hook.tapAsync('tap2', (name, cb) => {
+  console.log('tap2');
+  setTimeout(() => {
+    console.log('tap2 ex');
+    cb();
+  }, 2000);
+});
+
+hook.tapAsync('tap3', (name, cb) => {
+  console.log('tap3');
+  setTimeout(() => {
+    console.log('tap3 ex');
+    cb();
+  }, 3000);
+});
+
+hook.callAsync('decade', (error, result) => {
+  console.log('error', error);
+  console.log('result', result);
+});
+```
+
+@tab AsyncSeriesBailHook
+
+```ts
+import { AsyncSeriesBailHook } from 'tapable';
+
+const hook = new AsyncSeriesBailHook(['name']);
+
+hook.tapAsync('tap1', (name, cb) => {
+  console.log('tap1');
+  setTimeout(() => {
+    console.log('tap1 ex');
+    cb();
+  }, 1000);
+});
+
+hook.tapAsync('tap2', (name, cb) => {
+  console.log('tap2');
+  setTimeout(() => {
+    console.log('tap2 ex');
+    cb(null, 'tap2');
+  }, 2000);
+});
+
+hook.tapAsync('tap3', (name, cb) => {
+  console.log('tap3');
+  setTimeout(() => {
+    console.log('tap3 ex');
+    cb(null, 'tap3');
+  }, 3000);
+});
+
+hook.callAsync('decade', (error, result) => {
+  console.log('error', error);
+  console.log('result', result);
+});
+```
+
+@tab AsyncSeriesWaterfallHook
+
+```ts
+import { AsyncSeriesWaterfallHook } from 'tapable';
+
+const hook = new AsyncSeriesWaterfallHook(['name']);
+
+hook.tapAsync('tap1', (name, cb) => {
+  setTimeout(() => {
+    console.log(`tap1: ${name}`);
+    cb(null, 'zio');
+  }, 1000);
+});
+
+hook.tapAsync('tap2', (name, cb) => {
+  setTimeout(() => {
+    console.log(`tap2: ${name}`);
+    cb();
+  }, 2000);
+});
+
+hook.tapAsync('tap3', (name, cb) => {
+  setTimeout(() => {
+    console.log(`tap3: ${name}`);
+    cb(null, 'build');
+  }, 3000);
+});
+
+hook.callAsync('decade', (error, result) => {
+  console.log('error', error);
+  console.log('result', result);
+});
+```
+
+:::
