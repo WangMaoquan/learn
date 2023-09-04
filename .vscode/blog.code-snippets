@@ -101,7 +101,10 @@
 			"  - ${4:文章归属}",
 			"description: ${5:文章介绍}",
 			"footer: true",
-			"---"
+			"---",
+			"",
+			"",
+			"<!-- more -->"
 		],
 		"description": "生成一般 *.md 的formatter"
 	},
