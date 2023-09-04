@@ -1,2 +1,2 @@
-export * from './theme';
-export * from './base';
+export * from './theme/index.js';
+export * from './base/index.js';
