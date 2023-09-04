@@ -2,13 +2,14 @@
 title: 认识 tapable
 date: 2023-08-28 16:24:56
 tag:
-  - webpack
   - tapable
 category:
   - webpack
-description: tapable 从0到1
+description: tapable 的使用
 footer: true
 ---
+
+<!-- more -->
 
 # tapable 是什么?
 
