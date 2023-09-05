@@ -416,3 +416,201 @@ const COMPILE = function (options) {
 接下来我们瞅瞅 `HookCodeFactory` 是干啥的
 
 ## HookCodeFactory.js
+
+```javascript
+class HookCodeFactory {
+  constructor(config) {
+    /** */
+  }
+
+  create(options) {
+    /** */
+  }
+
+  setup(instance, options) {
+    /** */
+  }
+
+  init(options) {
+    /** */
+  }
+
+  deinit() {
+    /** */
+  }
+
+  contentWithInterceptors(options) {
+    /** */
+  }
+
+  header() {
+    /** */
+  }
+
+  needContext() {
+    /** */
+  }
+
+  callTap(tapIndex, { onError, onResult, onDone, rethrowIfPossible }) {
+    /** */
+  }
+
+  callTapsSeries({
+    onError,
+    onResult,
+    resultReturns,
+    onDone,
+    doneReturns,
+    rethrowIfPossible,
+  }) {
+    /** */
+  }
+
+  callTapsLooping({ onError, onDone, rethrowIfPossible }) {
+    /** */
+  }
+
+  callTapsParallel({
+    onError,
+    onResult,
+    onDone,
+    rethrowIfPossible,
+    onTap = (i, run) => run(),
+  }) {
+    /** */
+  }
+
+  args({ before, after } = {}) {
+    /** */
+  }
+
+  getTapFn(idx) {
+    /** */
+  }
+
+  getTap(idx) {
+    /** */
+  }
+
+  getInterceptor(idx) {
+    /** */
+  }
+}
+```
+
+### constructor & setup
+
+```javascript
+class HookCodeFactory {
+  constructor(config) {
+    this.config = config;
+    this.options = undefined;
+    this._args = undefined;
+  }
+  setup(instance, options) {
+    instance._x = options.taps.map((t) => t.fn);
+  }
+}
+```
+
+`构造函数` 主要做的就是 `config, options, _args` 的初始化
+`setup` 主要做的是对 `hook._x` 进行赋值
+
+### create
+
+```javascript
+class HookCodeFactory {
+  create(options) {
+    this.init(options);
+    let fn;
+    switch (this.options.type) {
+      case 'sync':
+        fn = new Function(/** */);
+        break;
+      case 'async':
+        fn = new Function(/** */);
+        break;
+      case 'promise':
+        fn = new Function(/** */);
+        break;
+    }
+    this.deinit();
+    return fn;
+  }
+}
+```
+
+中间还有两个方法 `init` 与 `deinit`
+
+::: code-tabs
+
+@tab init
+
+```javascript
+function init(options) {
+  this.options = options;
+  this._args = options.args.slice();
+}
+```
+
+@tab deinit
+
+```javascript
+function deinit() {
+  this.options = undefined;
+  this._args = undefined;
+}
+```
+
+:::
+
+这俩方法做的事情也就是 `options` 与 `_args` 的 `赋值` 与 `重置`
+
+::: note create
+
+回忆下 `options` 中的 字段
+
+- `taps:` 存放注册回调整合后的对象的数组
+- `interceptors:` 拦截器的数组
+- `args:` 初始化传入的 参数数组
+- `type:` sync/async/promise
+
+create 的主要逻辑, 这么一看也就不复杂了, 如下:
+
+1. 调用 `init` 初始化 `options` 与 `_args`
+2. 通过 `options.type` 字段 生成对应的 `fn`
+3. 调用 `deinit` 重置 `options` 与 `_args`
+4. 返回 fn
+
+:::
+
+所以我们接下来关注的就是 `生成对应的 fn` 这个过程, 进一步之前, 先补充下 `new Function()` 的知识点
+
+::: tip Function
+
+`Function` 接收的参数其实就两个 `形参` 与 `函数体`, 具体怎么使用可以参考下面代码:
+
+```javascript
+const print = new Function(`console.log('decade')`);
+
+print();
+
+const add = new Function('a', 'b', `console.log(a + b)`);
+
+add(2, 6);
+
+let x = 10;
+
+function createFunction1() {
+  const x = 20;
+  return new Function(`console.log(x)`);
+}
+
+createFunction1()();
+```
+
+可以看出 `new Function` 的最后一个参数是 `函数体`
+
+还可以看出 `new Function` 中的作用域是 `全局作用域`
+
+:::
