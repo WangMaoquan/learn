@@ -260,4 +260,159 @@ class Hook {
 
 主要是 通过 `options` 中的 `stage` 和 `before` 字段决定的, 通过代码得知, `before` 的优先级比 `stage` 高
 
+::: note 简单总结
+
+`tap, tapAsync, tapPromise` 其实调用的都是内部的 `_tap` 方法
+
+`_tap` 主要做的是 将参数处理成统一的对象形式, 处理主要有两种
+
+1. 传入的基本配置
+2. 通过 `interceptor` 的 `register` 钩子修改的配置
+
+最后调用的 `_insert` 方法 根据 `options` 中的 `before` `stage` 参数排序, 存放进 `taps` 里面
+:::
+
+### intercept
+
+处理 `options` 时 提到了 `interceptor`, 我们查看一下是怎么注册的
+
+```javascript
+class Hook {
+  intercept(interceptor) {
+    this._resetCompilation();
+    this.interceptors.push(Object.assign({}, interceptor));
+    if (interceptor.register) {
+      for (let i = 0; i < this.taps.length; i++) {
+        this.taps[i] = interceptor.register(this.taps[i]);
+      }
+    }
+  }
+}
+```
+
+主要做的就是 将 我们传入的 `interceptor`, 添加进 `interceptors` 里面,
+
+然后判断 是否有 `register` 这个方法, 有就调用更新 `taps` 里面的每一项
+
+::: tip 发现
+
+我们发现, 在修改或者添加 tap 对象时, 都会调用 `this._resetCompilation()`
+
+:::
+
+### `_resetCompilation`
+
+```javascript
+class Hook {
+  _resetCompilation() {
+    this.call = this._call;
+    this.callAsync = this._callAsync;
+    this.promise = this._promise;
+  }
+}
+```
+
+::: note 猜想
+
+主要做的就是重置 `call, callAsync, promise`
+
+初始化时其实 我们会发现 `call` 与 `_call` 其实是一个方法, `callSync` 与 `_callAsync`, `promise` 与 `_promise` 也都是同一个方法, 所以为啥会这么去重置?
+
+我是不是可以这么觉得?
+
+`call` 在哪一步发生了改变?
+
+下面就去印证我的猜想!
+
+:::
+
+我们先来看看 `call, _call, callAsync, _callAsync, promise, _promise` 的委托方法
+
+::: code-tabs
+
+@tab `call, _call`
+
+```javascript
+const CALL_DELEGATE = function (...args) {
+  this.call = this._createCall('sync');
+  return this.call(...args);
+};
+```
+
+@tab `callAsync, _callAsync`
+
+```javascript
+const CALL_ASYNC_DELEGATE = function (...args) {
+  this.call = this._createCall('async');
+  return this.call(...args);
+};
+```
+
+@tab `promise, _promise`
+
+```javascript
+const PROMISE_DELEGATE = function (...args) {
+  this.promise = this._createCall('promise');
+  return this.promise(...args);
+};
+```
+
+:::
+
+发现都指向 了`_createCall` 这个方法
+
+### `_createCall`
+
+```javascript
+class Hook {
+  _createCall(type) {
+    return this.compile({
+      taps: this.taps,
+      interceptors: this.interceptors,
+      args: this._args,
+      type: type,
+    });
+  }
+}
+```
+
+::: note 理解
+
+`_createCall` 从名字来就是返回一个 触发 `taps` 里面的每一项 的方法
+
+所以在 `委拖方法` 里, 需要将 `call/callAsync/promise` 指向返回的方法, 如果不重新指向, 也就是 多次调用`call/callAsync/promise` 就会多次去 `_createCall`, 简单的理解就是 `空间换时间`,
+
+找到了`call/callAsync/promise` 赋值的地方, 我们也要知道哪些原因是需要去将 `call/callAsync/promise` 重置为 `委托函数`
+
+通过 `this.compile` 的 参数就可以看出来, `taps, interceptor, args, type`,
+
+但是实际上我们使用的时候 变化的最多的其实是 `taps`, 因为我们可以 无限次 `tap/tapAsync/tapPromise` 去注册
+
+:::
+
+下面我们去分析 `this.compile`
+
+首先我们知道 `Hook 类` 的 `complie` 抛出的是一个异常, 所以 肯定是 `XxxHook` 实现了 `complie` 这个方法
+
+我就拿 `SyncHook` 来看
+
+```javascript
+function SyncHook(args = [], name = undefined) {
+  const hook = new Hook(args, name);
+  hook.constructor = SyncHook;
+  /** */
+  hook.compile = COMPILE;
+  return hook;
+}
+
+const COMPILE = function (options) {
+  factory.setup(this, options);
+  return factory.create(options);
+};
+```
+
+我们注意到通过 `factory.create` 返回的 `compile`, 那么这个 `factory` 是啥, 还记得我最开始说的, `tapable` 最核心的两个 `Hook` 与 `HookCodeFactory` 嘛?
+
+接下来我们瞅瞅 `HookCodeFactory` 是干啥的
+
 ## HookCodeFactory.js
