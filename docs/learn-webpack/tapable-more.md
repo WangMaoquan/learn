@@ -614,3 +614,420 @@ createFunction1()();
 还可以看出 `new Function` 中的作用域是 `全局作用域`
 
 :::
+
+所以其实 `create` 的第二步, 可以再细一点, 生成 `new Function` 要用到的 `形参`, 以及`函数体`,
+下面我们具体看看那个 `switch(this.options.type)` 的 每个分支
+
+::: code-tabs
+
+@tab sync
+
+```javascript
+fn = new Function(
+  this.args(),
+  '"use strict";\n' +
+    this.header() +
+    this.contentWithInterceptors({
+      onError: (err) => `throw ${err};\n`,
+      onResult: (result) => `return ${result};\n`,
+      resultReturns: true,
+      onDone: () => '',
+      rethrowIfPossible: true,
+    }),
+);
+```
+
+@tab async
+
+```javascript
+fn = new Function(
+  this.args({
+    after: '_callback',
+  }),
+  '"use strict";\n' +
+    this.header() +
+    this.contentWithInterceptors({
+      onError: (err) => `_callback(${err});\n`,
+      onResult: (result) => `_callback(null, ${result});\n`,
+      onDone: () => '_callback();\n',
+    }),
+);
+```
+
+@tab promise
+
+```javascript
+let errorHelperUsed = false;
+const content = this.contentWithInterceptors({
+  onError: (err) => {
+    errorHelperUsed = true;
+    return `_error(${err});\n`;
+  },
+  onResult: (result) => `_resolve(${result});\n`,
+  onDone: () => '_resolve();\n',
+});
+let code = '';
+code += '"use strict";\n';
+code += this.header();
+code += 'return new Promise((function(_resolve, _reject) {\n';
+if (errorHelperUsed) {
+  code += 'var _sync = true;\n';
+  code += 'function _error(_err) {\n';
+  code += 'if(_sync)\n';
+  code += '_resolve(Promise.resolve().then((function() { throw _err; })));\n';
+  code += 'else\n';
+  code += '_reject(_err);\n';
+  code += '};\n';
+}
+code += content;
+if (errorHelperUsed) {
+  code += '_sync = false;\n';
+}
+code += '}));\n';
+fn = new Function(this.args(), code);
+```
+
+:::
+
+三部分代码 做的事情十分明确, 就是生成 `new Function()` 的 `形参` 与 `函数体`
+
+注意其中的几个方法 `args`, `header`, `contentWithInterceptors`
+
+`args` 对应的就是 `形参` 那部分嘛
+
+`header` 和 `contentWithInterceptors` 就是 `函数体` 那部分
+
+### args
+
+```javascript
+class HookCodeFactory {
+  args({ before, after } = {}) {
+    let allArgs = this._args;
+    if (before) allArgs = [before].concat(allArgs);
+    if (after) allArgs = allArgs.concat(after);
+    if (allArgs.length === 0) {
+      return '';
+    } else {
+      return allArgs.join(', ');
+    }
+  }
+}
+```
+
+`args` 主要是生成 `Function` 的 `形参` 部分, 最后返回的 `所有参数` 的字符串,
+
+我们传入的 `_args` 能代表 所有嘛? 不一定, 举例就是 `async` 的需要的形参会多一个 `cb`, 用于通知该 `异步任务已经完成`
+
+这时, 我们也就是知道 解构出来的 `before`, `after` 接收的特殊的参数, 然后放在 `allArgs` 的 `头` 或者 `尾`
+
+### header
+
+```javascript
+class HookCodeFactory {
+  header() {
+    let code = '';
+    if (this.needContext()) {
+      code += 'var _context = {};\n';
+    } else {
+      code += 'var _context;\n';
+    }
+    code += 'var _x = this._x;\n';
+    if (this.options.interceptors.length > 0) {
+      code += 'var _taps = this.taps;\n';
+      code += 'var _interceptors = this.interceptors;\n';
+    }
+    return code;
+  }
+}
+```
+
+`header` 可以理解为 在函数里面 `声明变量` 那部分代码
+
+比如 `var _x = this._x` 这里其实就是拿到, 我们注册的 `回调函数` 数组
+
+如果传入的 `options.interceptors` 长度大于 0, 便会生成 `拦截器代码字符串`
+
+### contentWithInterceptors
+
+`contentWithInterceptors` 名字就能知道 代码的功能, 包含于不包含 `interceptors` 的 `content`
+
+```javascript
+class HookCodeFactory {
+  contentWithInterceptors(options) {
+    if (this.options.interceptors.length > 0) {
+      const onError = options.onError;
+      const onResult = options.onResult;
+      const onDone = options.onDone;
+      let code = '';
+      for (let i = 0; i < this.options.interceptors.length; i++) {
+        const interceptor = this.options.interceptors[i];
+        if (interceptor.call) {
+          code += `${this.getInterceptor(i)}.call(${this.args({
+            before: interceptor.context ? '_context' : undefined,
+          })});\n`;
+        }
+      }
+      code += this.content(
+        Object.assign(options, {
+          onError:
+            onError &&
+            ((err) => {
+              let code = '';
+              for (let i = 0; i < this.options.interceptors.length; i++) {
+                const interceptor = this.options.interceptors[i];
+                if (interceptor.error) {
+                  code += `${this.getInterceptor(i)}.error(${err});\n`;
+                }
+              }
+              code += onError(err);
+              return code;
+            }),
+          onResult:
+            onResult &&
+            ((result) => {
+              let code = '';
+              for (let i = 0; i < this.options.interceptors.length; i++) {
+                const interceptor = this.options.interceptors[i];
+                if (interceptor.result) {
+                  code += `${this.getInterceptor(i)}.result(${result});\n`;
+                }
+              }
+              code += onResult(result);
+              return code;
+            }),
+          onDone:
+            onDone &&
+            (() => {
+              let code = '';
+              for (let i = 0; i < this.options.interceptors.length; i++) {
+                const interceptor = this.options.interceptors[i];
+                if (interceptor.done) {
+                  code += `${this.getInterceptor(i)}.done();\n`;
+                }
+              }
+              code += onDone();
+              return code;
+            }),
+        }),
+      );
+      return code;
+    } else {
+      return this.content(options);
+    }
+  }
+}
+```
+
+`withInterceptors` 到底是怎么去 `with` 的, 其实不难猜出来, 把 `interceptor` 对应的钩子, 拼接进 `content`
+
+主要处理了 `onResult, onError, onDone` 这三个钩子
+
+然后就是, 接下来的了 `content` 方法, 还记得在哪见过吗? `XxxHook.js` 中都会实现一个 继承自 `HookCodeFactory` 的 `Factory`, 其中刚好实现了 `this.content`
+
+我们其实也注意到 `HookCodeFactory` 中还有着 `callTap`, `callTapsSeries`, `callTapsLooping`, `callTapsParallel` 这么几个 `call` 方法, 在哪里调用呢? 答案刚好就是 `this.content`
+
+### content
+
+还是拿的 `SyncHook` 中的
+
+```javascript
+class SyncHookCodeFactory extends HookCodeFactory {
+  content({ onError, onDone, rethrowIfPossible }) {
+    return this.callTapsSeries({
+      onError: (i, err) => onError(err),
+      onDone,
+      rethrowIfPossible,
+    });
+  }
+}
+```
+
+来, 正如我们所料, 主要就是调用 `callTapsXxxx` 方法, 下面我们进入 `callTapsXxx` 方法
+
+### callTapsXxx
+
+为啥只有 `callTapsSeries`, `callTapsLooping`, `callTapsParallel`, 却没有 `Waterfall`, `Bail`, 先留个疑问
+
+::: code-tabs
+
+@tab callTapsSeries
+
+```javascript
+function callTapsSeries({
+  onError,
+  onResult,
+  resultReturns,
+  onDone,
+  doneReturns,
+  rethrowIfPossible,
+}) {
+  if (this.options.taps.length === 0) return onDone();
+  const firstAsync = this.options.taps.findIndex((t) => t.type !== 'sync');
+  const somethingReturns = resultReturns || doneReturns;
+  let code = '';
+  let current = onDone;
+  let unrollCounter = 0;
+  for (let j = this.options.taps.length - 1; j >= 0; j--) {
+    const i = j;
+    const unroll =
+      current !== onDone &&
+      (this.options.taps[i].type !== 'sync' || unrollCounter++ > 20);
+    if (unroll) {
+      unrollCounter = 0;
+      code += `function _next${i}() {\n`;
+      code += current();
+      code += `}\n`;
+      current = () => `${somethingReturns ? 'return ' : ''}_next${i}();\n`;
+    }
+    const done = current;
+    const doneBreak = (skipDone) => {
+      if (skipDone) return '';
+      return onDone();
+    };
+    const content = this.callTap(i, {
+      onError: (error) => onError(i, error, done, doneBreak),
+      onResult:
+        onResult &&
+        ((result) => {
+          return onResult(i, result, done, doneBreak);
+        }),
+      onDone: !onResult && done,
+      rethrowIfPossible:
+        rethrowIfPossible && (firstAsync < 0 || i < firstAsync),
+    });
+    current = () => content;
+  }
+  code += current();
+  return code;
+}
+```
+
+@tab callTapsLooping
+
+```javascript
+function callTapsLooping({ onError, onDone, rethrowIfPossible }) {
+  if (this.options.taps.length === 0) return onDone();
+  const syncOnly = this.options.taps.every((t) => t.type === 'sync');
+  let code = '';
+  if (!syncOnly) {
+    code += 'var _looper = (function() {\n';
+    code += 'var _loopAsync = false;\n';
+  }
+  code += 'var _loop;\n';
+  code += 'do {\n';
+  code += '_loop = false;\n';
+  for (let i = 0; i < this.options.interceptors.length; i++) {
+    const interceptor = this.options.interceptors[i];
+    if (interceptor.loop) {
+      code += `${this.getInterceptor(i)}.loop(${this.args({
+        before: interceptor.context ? '_context' : undefined,
+      })});\n`;
+    }
+  }
+  code += this.callTapsSeries({
+    onError,
+    onResult: (i, result, next, doneBreak) => {
+      let code = '';
+      code += `if(${result} !== undefined) {\n`;
+      code += '_loop = true;\n';
+      if (!syncOnly) code += 'if(_loopAsync) _looper();\n';
+      code += doneBreak(true);
+      code += `} else {\n`;
+      code += next();
+      code += `}\n`;
+      return code;
+    },
+    onDone:
+      onDone &&
+      (() => {
+        let code = '';
+        code += 'if(!_loop) {\n';
+        code += onDone();
+        code += '}\n';
+        return code;
+      }),
+    rethrowIfPossible: rethrowIfPossible && syncOnly,
+  });
+  code += '} while(_loop);\n';
+  if (!syncOnly) {
+    code += '_loopAsync = true;\n';
+    code += '});\n';
+    code += '_looper();\n';
+  }
+  return code;
+}
+```
+
+@tab callTapsParallel
+
+```javascript
+function callTapsParallel({
+  onError,
+  onResult,
+  onDone,
+  rethrowIfPossible,
+  onTap = (i, run) => run(),
+}) {
+  if (this.options.taps.length <= 1) {
+    return this.callTapsSeries({
+      onError,
+      onResult,
+      onDone,
+      rethrowIfPossible,
+    });
+  }
+  let code = '';
+  code += 'do {\n';
+  code += `var _counter = ${this.options.taps.length};\n`;
+  if (onDone) {
+    code += 'var _done = (function() {\n';
+    code += onDone();
+    code += '});\n';
+  }
+  for (let i = 0; i < this.options.taps.length; i++) {
+    const done = () => {
+      if (onDone) return 'if(--_counter === 0) _done();\n';
+      else return '--_counter;';
+    };
+    const doneBreak = (skipDone) => {
+      if (skipDone || !onDone) return '_counter = 0;\n';
+      else return '_counter = 0;\n_done();\n';
+    };
+    code += 'if(_counter <= 0) break;\n';
+    code += onTap(
+      i,
+      () =>
+        this.callTap(i, {
+          onError: (error) => {
+            let code = '';
+            code += 'if(_counter > 0) {\n';
+            code += onError(i, error, done, doneBreak);
+            code += '}\n';
+            return code;
+          },
+          onResult:
+            onResult &&
+            ((result) => {
+              let code = '';
+              code += 'if(_counter > 0) {\n';
+              code += onResult(i, result, done, doneBreak);
+              code += '}\n';
+              return code;
+            }),
+          onDone:
+            !onResult &&
+            (() => {
+              return done();
+            }),
+          rethrowIfPossible,
+        }),
+      done,
+      doneBreak,
+    );
+  }
+  code += '} while(false);\n';
+  return code;
+}
+```
+
+:::
