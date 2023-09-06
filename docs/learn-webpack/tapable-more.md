@@ -861,22 +861,31 @@ function callTapsSeries({
   doneReturns,
   rethrowIfPossible,
 }) {
-  if (this.options.taps.length === 0) return onDone();
+  if (this.options.taps.length === 0) return onDone(); // 没有注册直接返回 onDone
+  // 找到第一个不是同步的 tap
   const firstAsync = this.options.taps.findIndex((t) => t.type !== 'sync');
+  // 是否有返回值
   const somethingReturns = resultReturns || doneReturns;
+  // code 初始化
   let code = '';
+  // current 指向 onDone, 保留的就是 串联执行的 上一个 fn
   let current = onDone;
+  // 同步方法是不需要 在生成的函数里面去调用下一个的, 所以这个代表着 异步 tap 之间 同步tap 的数量
   let unrollCounter = 0;
+  // 遍历, 逆序 为啥要逆序? onDone 是不是应该由最后一个 fn 完成后去触发
   for (let j = this.options.taps.length - 1; j >= 0; j--) {
     const i = j;
+    // 判断是否需要 生成 next
     const unroll =
       current !== onDone &&
       (this.options.taps[i].type !== 'sync' || unrollCounter++ > 20);
     if (unroll) {
+      // 恢复为0
       unrollCounter = 0;
       code += `function _next${i}() {\n`;
       code += current();
       code += `}\n`;
+      // 指向上一个 fn
       current = () => `${somethingReturns ? 'return ' : ''}_next${i}();\n`;
     }
     const done = current;
@@ -884,6 +893,7 @@ function callTapsSeries({
       if (skipDone) return '';
       return onDone();
     };
+    // 每一部分都要调用 callTap 去生成
     const content = this.callTap(i, {
       onError: (error) => onError(i, error, done, doneBreak),
       onResult:
@@ -895,6 +905,7 @@ function callTapsSeries({
       rethrowIfPossible:
         rethrowIfPossible && (firstAsync < 0 || i < firstAsync),
     });
+    // 指向 处理完成的 content
     current = () => content;
   }
   code += current();
@@ -907,6 +918,7 @@ function callTapsSeries({
 ```javascript
 function callTapsLooping({ onError, onDone, rethrowIfPossible }) {
   if (this.options.taps.length === 0) return onDone();
+  // 是否全部都是 同步
   const syncOnly = this.options.taps.every((t) => t.type === 'sync');
   let code = '';
   if (!syncOnly) {
@@ -916,6 +928,7 @@ function callTapsLooping({ onError, onDone, rethrowIfPossible }) {
   code += 'var _loop;\n';
   code += 'do {\n';
   code += '_loop = false;\n';
+  // 拼接 interceptor 的 loop
   for (let i = 0; i < this.options.interceptors.length; i++) {
     const interceptor = this.options.interceptors[i];
     if (interceptor.loop) {
@@ -924,6 +937,7 @@ function callTapsLooping({ onError, onDone, rethrowIfPossible }) {
       })});\n`;
     }
   }
+  // 调用 callTapsSeries
   code += this.callTapsSeries({
     onError,
     onResult: (i, result, next, doneBreak) => {
@@ -968,6 +982,7 @@ function callTapsParallel({
   rethrowIfPossible,
   onTap = (i, run) => run(),
 }) {
+  // 只有一个或者没有的情况 视为串联
   if (this.options.taps.length <= 1) {
     return this.callTapsSeries({
       onError,
@@ -1030,4 +1045,288 @@ function callTapsParallel({
 }
 ```
 
+简单的注释了一下, 但是我们知道, 最主要的还是 `callTap`
+
+### callTap
+
+```javascript
+class HookCodeFactory {
+  callTap(tapIndex, { onError, onResult, onDone, rethrowIfPossible }) {
+    let code = '';
+    let hasTapCached = false;
+    for (let i = 0; i < this.options.interceptors.length; i++) {
+      const interceptor = this.options.interceptors[i];
+      if (interceptor.tap) {
+        if (!hasTapCached) {
+          code += `var _tap${tapIndex} = ${this.getTap(tapIndex)};\n`;
+          hasTapCached = true;
+        }
+        code += `${this.getInterceptor(i)}.tap(${
+          interceptor.context ? '_context, ' : ''
+        }_tap${tapIndex});\n`;
+      }
+    }
+    code += `var _fn${tapIndex} = ${this.getTapFn(tapIndex)};\n`;
+    const tap = this.options.taps[tapIndex];
+    switch (tap.type) {
+      case 'sync':
+        if (!rethrowIfPossible) {
+          code += `var _hasError${tapIndex} = false;\n`;
+          code += 'try {\n';
+        }
+        if (onResult) {
+          code += `var _result${tapIndex} = _fn${tapIndex}(${this.args({
+            before: tap.context ? '_context' : undefined,
+          })});\n`;
+        } else {
+          code += `_fn${tapIndex}(${this.args({
+            before: tap.context ? '_context' : undefined,
+          })});\n`;
+        }
+        if (!rethrowIfPossible) {
+          code += '} catch(_err) {\n';
+          code += `_hasError${tapIndex} = true;\n`;
+          code += onError('_err');
+          code += '}\n';
+          code += `if(!_hasError${tapIndex}) {\n`;
+        }
+        if (onResult) {
+          code += onResult(`_result${tapIndex}`);
+        }
+        if (onDone) {
+          code += onDone();
+        }
+        if (!rethrowIfPossible) {
+          code += '}\n';
+        }
+        break;
+      case 'async':
+        let cbCode = '';
+        if (onResult)
+          cbCode += `(function(_err${tapIndex}, _result${tapIndex}) {\n`;
+        else cbCode += `(function(_err${tapIndex}) {\n`;
+        cbCode += `if(_err${tapIndex}) {\n`;
+        cbCode += onError(`_err${tapIndex}`);
+        cbCode += '} else {\n';
+        if (onResult) {
+          cbCode += onResult(`_result${tapIndex}`);
+        }
+        if (onDone) {
+          cbCode += onDone();
+        }
+        cbCode += '}\n';
+        cbCode += '})';
+        code += `_fn${tapIndex}(${this.args({
+          before: tap.context ? '_context' : undefined,
+          after: cbCode,
+        })});\n`;
+        break;
+      case 'promise':
+        code += `var _hasResult${tapIndex} = false;\n`;
+        code += `var _promise${tapIndex} = _fn${tapIndex}(${this.args({
+          before: tap.context ? '_context' : undefined,
+        })});\n`;
+        code += `if (!_promise${tapIndex} || !_promise${tapIndex}.then)\n`;
+        code += `  throw new Error('Tap function (tapPromise) did not return promise (returned ' + _promise${tapIndex} + ')');\n`;
+        code += `_promise${tapIndex}.then((function(_result${tapIndex}) {\n`;
+        code += `_hasResult${tapIndex} = true;\n`;
+        if (onResult) {
+          code += onResult(`_result${tapIndex}`);
+        }
+        if (onDone) {
+          code += onDone();
+        }
+        code += `}), function(_err${tapIndex}) {\n`;
+        code += `if(_hasResult${tapIndex}) throw _err${tapIndex};\n`;
+        code += onError(`_err${tapIndex}`);
+        code += '});\n';
+        break;
+    }
+    return code;
+  }
+}
+```
+
+主要的逻辑就是根据对应的 `type` 生成最基本的 `fn`
+
+::: code-tabs
+
+@tab sync-no-throw-code
+
+```javascript
+function anonymous(name) {
+  'use strict';
+  var _context;
+  var _x = this._x;
+  var _taps = this.taps;
+  var _interceptors = this.interceptors;
+  var _tap0 = _taps[0];
+  _interceptors[0].tap(_tap0);
+  var _fn0 = _x[0];
+  _fn0(name);
+  var _tap1 = _taps[1];
+  _interceptors[0].tap(_tap1);
+  var _fn1 = _x[1];
+  _fn1(name);
+  var _tap2 = _taps[2];
+  _interceptors[0].tap(_tap2);
+  var _fn2 = _x[2];
+  _fn2(name);
+}
+```
+
+@tab sync-code
+
+```javascript
+function anonymous(name) {
+  'use strict';
+  var _context;
+  var _x = this._x;
+  var _taps = this.taps;
+  var _interceptors = this.interceptors;
+  var _tap0 = _taps[0];
+  _interceptors[0].tap(_tap0);
+  var _fn0 = _x[0];
+  _fn0(name);
+  var _tap1 = _taps[1];
+  _interceptors[0].tap(_tap1);
+  var _fn1 = _x[1];
+  _fn1(name);
+  var _tap2 = _taps[2];
+  _interceptors[0].tap(_tap2);
+  var _fn2 = _x[2];
+  _fn2(name);
+}
+```
+
+@tab async-code
+
+```javascript
+function anonymous(name, _callback) {
+  'use strict';
+  var _context;
+  var _x = this._x;
+  var _taps = this.taps;
+  var _interceptors = this.interceptors;
+  var _tap0 = _taps[0];
+  _interceptors[0].tap(_tap0);
+  var _fn0 = _x[0];
+  var _hasError0 = false;
+  try {
+    _fn0(name);
+  } catch (_err) {
+    _hasError0 = true;
+    _callback(_err);
+  }
+  if (!_hasError0) {
+    var _tap1 = _taps[1];
+    _interceptors[0].tap(_tap1);
+    var _fn1 = _x[1];
+    var _hasError1 = false;
+    try {
+      _fn1(name);
+    } catch (_err) {
+      _hasError1 = true;
+      _callback(_err);
+    }
+    if (!_hasError1) {
+      var _tap2 = _taps[2];
+      _interceptors[0].tap(_tap2);
+      var _fn2 = _x[2];
+      var _hasError2 = false;
+      try {
+        _fn2(name);
+      } catch (_err) {
+        _hasError2 = true;
+        _callback(_err);
+      }
+      if (!_hasError2) {
+        _callback();
+      }
+    }
+  }
+}
+```
+
+@tab promise-code
+
+```javascript
+function anonymous(name) {
+  'use strict';
+  var _context;
+  var _x = this._x;
+  var _taps = this.taps;
+  var _interceptors = this.interceptors;
+  return new Promise(function (_resolve, _reject) {
+    var _sync = true;
+    function _error(_err) {
+      if (_sync)
+        _resolve(
+          Promise.resolve().then(function () {
+            throw _err;
+          }),
+        );
+      else _reject(_err);
+    }
+    var _tap0 = _taps[0];
+    _interceptors[0].tap(_tap0);
+    var _fn0 = _x[0];
+    var _hasError0 = false;
+    try {
+      _fn0(name);
+    } catch (_err) {
+      _hasError0 = true;
+      _error(_err);
+    }
+    if (!_hasError0) {
+      var _tap1 = _taps[1];
+      _interceptors[0].tap(_tap1);
+      var _fn1 = _x[1];
+      var _hasError1 = false;
+      try {
+        _fn1(name);
+      } catch (_err) {
+        _hasError1 = true;
+        _error(_err);
+      }
+      if (!_hasError1) {
+        var _tap2 = _taps[2];
+        _interceptors[0].tap(_tap2);
+        var _fn2 = _x[2];
+        var _hasError2 = false;
+        try {
+          _fn2(name);
+        } catch (_err) {
+          _hasError2 = true;
+          _error(_err);
+        }
+        if (!_hasError2) {
+          _resolve();
+        }
+      }
+    }
+    _sync = false;
+  });
+}
+```
+
 :::
+
+举的例子都是 串联执行的
+
+```javascript
+// const hook = new AsyncSeriesHook(['name']);
+const hook = new SyncHook(['name']);
+hook.intercept({
+  tap(tap) {
+    console.log('tap', tap);
+  },
+});
+hook.tap('t1', () => console.log('t1'));
+hook.tap('t2', () => console.log('t2'));
+hook.tap('t3', () => console.log('t3'));
+console.log(hook._createCall('sync').toString());
+
+// console.log(hook._createCall('async').toString());
+// console.log(hook._createCall('promise').toString());
+```
