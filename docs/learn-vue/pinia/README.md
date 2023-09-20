@@ -1,12 +1,13 @@
+---
 title: pinia
 date: 2023-09-20 14:36:39
 tag:
-
-- pinia
-  category:
-- vue
-  description: 简单了解 pinia
-  footer: true
+  - pinia
+category:
+  - vue
+description: 简单了解 pinia
+footer: true
+---
 
 <!-- more -->
 
