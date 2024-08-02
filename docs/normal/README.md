@@ -85,7 +85,7 @@ Closes #278, #2222, #8989
 
 #### Revert
 
-如果 `commit` 用于撤销之前的 commit, 这个 commit 就应该以 revert: 开头, 后面是撤销这个 commit 的 header. 在 body 里面应该写 This reverts commit <hash>., 其中的 hash 是被撤销 commit 的 SHA 标识符
+如果 `commit` 用于撤销之前的 commit, 这个 commit 就应该以 revert: 开头, 后面是撤销这个 commit 的 header. 在 body 里面应该写 This reverts commit `<hash>`., 其中的 hash 是被撤销 commit 的 SHA 标识符
 
 ```
 revert: feat(pencil): add 'graphiteWidth' option
