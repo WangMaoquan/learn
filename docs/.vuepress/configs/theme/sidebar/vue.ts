@@ -21,6 +21,10 @@ export const vueSideBar = arraySidebar([
     ],
   },
   {
+    text: 'Pinia',
+    link: 'pinia',
+  },
+  {
     text: '调试源码',
     link: 'debugger-source-code',
   },
