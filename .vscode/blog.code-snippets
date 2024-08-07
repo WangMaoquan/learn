@@ -1,123 +1,103 @@
 {
-	"playground": {
-		"prefix": "blog-playground",
-		"scope": "markdown",
-		"body": [
-			":::playground#${1:ts} ${2: 测试标题}",
-			"",
-			"@file index.${1:ts}",
-			"",
-			"```${1:ts}",
-			"",
-			"```",
-			"",
-			":::"
-		],
-		"description": "blog-playground-ts"
-	},
-	"blog-tabs": {
-		"prefix": "blog-tabs",
-		"scope": "markdown",
-		"body": [
-			"::: tabs",
-			"",
-			"@tab:active ${1:标题一}",
-			"",
-			":::",
-			""
-		],
-		"description": "blog-tabs"
-	},
-	"blog-code-tabs": {
-		"prefix": "blog-code-tabs",
-		"scope": "markdown",
-		"body": [
-			"::: code-tabs",
-			"",
-			"@tab ${1:测试}",
-			"",
-			"```${2:ts}",
-			"",
-			"```",
-			"",
-			":::"
-		],
-		"description": "blog-code-tabs"
-	},
-	"blog-tasklist": {
-		"prefix": "blog-tasklist",
-		"scope": "markdown",
-		"body": [
-			"- [ ]"
-		],
-		"description": "blog-tasklist"
-	},
-	"blog-pic": {
-		"prefix": "blog-pic",
-		"scope": "markdown",
-		"body": [
-			"![${1:测试图片名](${2:测试图片地址})"
-		],
-		"description": "blog-pic"
-	},
-	"blog-link": {
-		"prefix": "blog-link",
-		"scope": "markdown",
-		"body": [
-			"[${1:测试链接名}](${2:测试链接地址})"
-		],
-		"description": "blog-link"
-	},
-	"blog-mark": {
-		"prefix": "blog-mark",
-		"scope": "markdown",
-		"body": [
-			"==${1:测试文字}=="
-		],
-		"description": "blog-mark"
-	},
-	"blog-container": {
-		"prefix": "blog-container",
-		"scope": "markdown",
-		"body": [
-			"::: ${1|info,note,tip,warning,danger,details|} ${2: 默认标题}",
-			"",
-			"${3:默认内容}",
-			"",
-			":::"
-		],
-		"description": "blog-container"
-	},
-	"blog-page": {
-		"prefix": "blog-page",
-		"scope": "markdown",
-		"body": [
-			"---",
-			"title: ${1:文章title}",
-			"date: $CURRENT_YEAR-$CURRENT_MONTH-$CURRENT_DATE $CURRENT_HOUR:$CURRENT_MINUTE:$CURRENT_SECOND",
-			"tag:",
-			"  - ${3:文章标签}",
-			"category:",
-			"  - ${4:文章归属}",
-			"description: ${5:文章介绍}",
-			"footer: true",
-			"---",
-			"",
-			"",
-			"<!-- more -->"
-		],
-		"description": "生成一般 *.md 的formatter"
-	},
-	"blog-readme": {
-		"prefix": "blog-readme",
-		"body": [
-			"---",
-			"title: ${1:文章title}",
-			"article: false",
-			"---"
-		],
-		"description": "生成readme.md formatter"
-	}
+  "playground": {
+    "prefix": "blog-playground",
+    "scope": "markdown",
+    "body": [
+      ":::playground#${1:ts} ${2: 测试标题}",
+      "",
+      "@file index.${1:ts}",
+      "",
+      "```${1:ts}",
+      "",
+      "```",
+      "",
+      ":::"
+    ],
+    "description": "blog-playground-ts"
+  },
+  "blog-tabs": {
+    "prefix": "blog-tabs",
+    "scope": "markdown",
+    "body": ["::: tabs", "", "@tab:active ${1:标题一}", "", ":::", ""],
+    "description": "blog-tabs"
+  },
+  "blog-code-tabs": {
+    "prefix": "blog-code-tabs",
+    "scope": "markdown",
+    "body": [
+      "::: code-tabs",
+      "",
+      "@tab ${1:测试}",
+      "",
+      "```${2:ts}",
+      "",
+      "```",
+      "",
+      ":::"
+    ],
+    "description": "blog-code-tabs"
+  },
+  "blog-tasklist": {
+    "prefix": "blog-tasklist",
+    "scope": "markdown",
+    "body": ["- [ ]"],
+    "description": "blog-tasklist"
+  },
+  "blog-pic": {
+    "prefix": "blog-pic",
+    "scope": "markdown",
+    "body": ["![${1:测试图片名}](${2:测试图片地址})"],
+    "description": "blog-pic"
+  },
+  "blog-link": {
+    "prefix": "blog-link",
+    "scope": "markdown",
+    "body": ["[${1:测试链接名}](${2:测试链接地址})"],
+    "description": "blog-link"
+  },
+  "blog-mark": {
+    "prefix": "blog-mark",
+    "scope": "markdown",
+    "body": ["==${1:测试文字}=="],
+    "description": "blog-mark"
+  },
+  "blog-container": {
+    "prefix": "blog-container",
+    "scope": "markdown",
+    "body": [
+      "::: ${1|info,note,tip,warning,danger,details|} ${2: 默认标题}",
+      "",
+      "${3:默认内容}",
+      "",
+      ":::"
+    ],
+    "description": "blog-container"
+  },
+  "blog-page": {
+    "prefix": "blog-page",
+    "scope": "markdown",
+    "body": [
+      "---",
+      "title: ${1:文章title}",
+      "date: $CURRENT_YEAR-$CURRENT_MONTH-$CURRENT_DATE $CURRENT_HOUR:$CURRENT_MINUTE:$CURRENT_SECOND",
+      "tag:",
+      "  - ${3:文章标签}",
+      "category:",
+      "  - ${4:文章归属}",
+      "description: ${5:文章介绍}",
+      "footer: true",
+      "---",
+      "",
+      "",
+      "<!-- more -->"
+    ],
+    "description": "生成一般 *.md 的formatter"
+  },
+  "blog-readme": {
+    "prefix": "blog-readme",
+    "body": ["---", "title: ${1:文章title}", "article: false", "---"],
+    "description": "生成readme.md formatter"
+  }
 }
 /**
   快速生成 snippets 网站
